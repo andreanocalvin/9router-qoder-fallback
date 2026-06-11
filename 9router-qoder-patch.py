@@ -200,7 +200,12 @@ def apply_patches(chunks_dir, dry_run=False):
             continue
 
         # Apply the patch
-        new_content, count = re.subn(patch["search"], patch["replace"], content)
+        replace_str = patch["replace"]
+        # Use lambda to avoid re.subn interpreting \x, \u etc in replacement
+        if "\\x" in replace_str or "\\u" in replace_str:
+            new_content, count = re.subn(patch["search"], lambda m: replace_str, content)
+        else:
+            new_content, count = re.subn(patch["search"], replace_str, content)
 
         if count == 0:
             results.append({
