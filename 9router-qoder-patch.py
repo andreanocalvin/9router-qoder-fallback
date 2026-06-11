@@ -56,6 +56,15 @@ PATCHES = [
         "replace": 'let q="string"==typeof c?c.slice(0,200):"Provider error";if(q.includes("isQueued")||q.includes("10605")){let _qc=q.match(/queueCount["\\\\s:]+(\\\\d+)/);q=`Qoder queue full (${_qc?_qc[1]+" waiting":"high traffic"}), retrying next account`}let r=',
         "backup_suffix": ".bak",
     },
+    {
+        "name": "proxy loop error cleanup",
+        "description": "Clean Qoder error in proxy fallback loop so client sees clean message",
+        "file_glob": "*.js",
+        "identify": lambda content: "55221:(a,b,c)" in content and "v.add(b.connectionId)" in content,
+        "search": r'v\.add\(b\.connectionId\),w=u\.error,x=u\.status;continue',
+        "replace": 'v.add(b.connectionId),w=u.error&&(u.error.includes("isQueued")||u.error.includes("10605"))?"Qoder queue full ("+((u.error.match(/queueCount["\\\\s:]+(\\\\d+)/)||[])[1]||"?")+" waiting), retrying next account":u.error,x=u.status;continue',
+        "backup_suffix": ".bak",
+    },
 ]
 
 
@@ -112,6 +121,8 @@ def check_patches(chunks_dir):
                 if 'f.includes("isqueued")' in content and patch["name"].startswith("hk"):
                     applied = True
                 elif 'q.includes("isQueued")' in content and patch["name"].startswith("vk"):
+                    applied = True
+                elif 'u.error.includes("isQueued")' in content and patch["name"].startswith("proxy"):
                     applied = True
                 break
 

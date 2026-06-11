@@ -48,11 +48,11 @@ python 9router-qoder-patch.py --revert
 python 9router-qoder-patch.py --apply --chunks-dir /path/to/chunks
 ```
 
-### Deploy ke VPS
+### Deploy ke Server Lain
 ```bash
-python deploy-vps.py
+python 9router-qoder-patch.py --apply --chunks-dir /path/to/9router/chunks
+# Lalu restart 9router
 ```
-Script otomatis: upload patch → apply → restart 9router (PM2) → verify.
 
 ## Setelah Apply
 
