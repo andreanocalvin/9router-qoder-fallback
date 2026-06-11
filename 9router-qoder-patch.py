@@ -92,6 +92,15 @@ PATCHES = [
         "replace": 'let p=m&&m.toLowerCase().includes("no credentials")?503:o||503,q=m||"All combo models unavailable";if(typeof q==="string"&&(q.includes("isQueued")||q.includes("10605")))q="Qoder queue full, all models busy - retry shortly"',
         "backup_suffix": ".bak",
     },
+    {
+        "name": "Qoder fallback dashboard log",
+        "description": "Add p.warn log so fallback shows in 9router dashboard console",
+        "file_glob": "*.js",
+        "identify": lambda content: "55221:(a,b,c)" in content and "QODER FALLBACK" in content,
+        "search": r'(console\.log\(`[^`]*QODER FALLBACK[^`]*`\))',
+        "replace": r'\1,p.warn("QODER","FALLBACK: "+b.connectionName+" queued,trying next")',
+        "backup_suffix": ".bak",
+    },
 ]
 
 
@@ -154,6 +163,8 @@ def check_patches(chunks_dir):
                 elif 'QODER FALLBACK' in content and patch["name"].startswith("Qoder"):
                     applied = True
                 elif 'all accounts busy' in content and patch["name"].startswith("allRateLimited"):
+                    applied = True
+                elif 'QODER FALLBACK' in content and patch["name"].startswith("Qoder fallback"):
                     applied = True
                 elif 'all models busy' in content and patch["name"].startswith("combo"):
                     applied = True
