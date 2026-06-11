@@ -243,6 +243,74 @@ def revert_patches(chunks_dir):
     return results
 
 
+def restart_9router():
+    """Kill 9router process and restart it."""
+    import subprocess
+    import platform
+    import time
+
+    system = platform.system()
+    print("\n🔄 Restarting 9router...")
+
+    # Kill existing process on port 20128
+    try:
+        if system == "Windows":
+            result = subprocess.run(
+                ["netstat", "-ano"], capture_output=True, text=True
+            )
+            for line in result.stdout.splitlines():
+                if ":20128" in line and "LISTENING" in line:
+                    pid = line.strip().split()[-1]
+                    print(f"  Killing PID {pid}...")
+                    subprocess.run(["taskkill", "/F", "/PID", pid],
+                                   capture_output=True)
+        else:
+            result = subprocess.run(
+                ["lsof", "-ti", ":20128"], capture_output=True, text=True
+            )
+            for pid in result.stdout.strip().split():
+                print(f"  Killing PID {pid}...")
+                subprocess.run(["kill", "-9", pid], capture_output=True)
+    except Exception as e:
+        print(f"  Kill failed: {e}")
+
+    time.sleep(2)
+
+    # Restart
+    try:
+        if system == "Windows":
+            # Start in background tray mode
+            subprocess.Popen(
+                ["9router", "--no-browser", "--skip-update", "--tray"],
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+        else:
+            # Try PM2 first, fallback to direct
+            r = subprocess.run(["pm2", "restart", "9router"],
+                               capture_output=True, text=True)
+            if r.returncode != 0:
+                subprocess.Popen(
+                    ["9router", "--no-browser", "--skip-update"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+
+        print("  Waiting for startup...")
+        time.sleep(4)
+
+        # Health check
+        import urllib.request
+        resp = urllib.request.urlopen("http://localhost:20128/api/health", timeout=5)
+        data = resp.read().decode()
+        if '"ok":true' in data or '"ok": true' in data:
+            print("  ✅ 9router restarted successfully!")
+        else:
+            print(f"  ⚠️  Health check: {data[:100]}")
+    except Exception as e:
+        print(f"  ⚠️  9router may still be starting: {e}")
+        print("  Wait a few seconds and check http://localhost:20128")
+
+
+
 def main():
     parser = argparse.ArgumentParser(description="9Router Qoder Queue Error Fallback Patch")
     group = parser.add_mutually_exclusive_group(required=True)
@@ -251,6 +319,7 @@ def main():
     group.add_argument("--check", action="store_true", help="Check patch status")
     group.add_argument("--dry-run", action="store_true", help="Show what would be changed")
     parser.add_argument("--chunks-dir", type=str, help="Custom chunks directory path")
+    parser.add_argument("--no-restart", action="store_true", help="Skip auto-restart after apply")
 
     args = parser.parse_args()
 
@@ -282,8 +351,8 @@ def main():
             print(f"     {r['status']}: {r['reason']}{backup_info}")
 
         ok_count = sum(1 for r in results if r["status"] == "OK")
-        if ok_count > 0:
-            print(f"\n⚡ Restart 9router to apply: 9router stop && 9router")
+        if ok_count > 0 and not args.no_restart:
+            restart_9router()
 
     elif args.dry_run:
         results = apply_patches(chunks_dir, dry_run=True)
@@ -297,8 +366,8 @@ def main():
             print(f"  {icon} {r['name']} → {r.get('file', '?')}: {r['status']}")
 
         reverted = sum(1 for r in results if r["status"] == "REVERTED")
-        if reverted > 0:
-            print(f"\n⚡ Restart 9router to apply: 9router stop && 9router")
+        if reverted > 0 and not args.no_restart:
+            restart_9router()
 
 
 if __name__ == "__main__":

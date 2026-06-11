@@ -57,9 +57,35 @@ python "%SCRIPT%" --apply
 echo.
 echo.
 echo Restarting 9router...
-taskkill /f /im node.exe /fi "WINDOWTITLE eq 9router*" >nul 2>&1
+echo.
+
+:: Find and kill process on port 20128
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :20128 ^| findstr LISTENING') do (
+    echo Killing PID %%a ...
+    taskkill /F /PID %%a >nul 2>&1
+)
+
 timeout /t 2 /nobreak >nul
-echo Done! Restart 9router manually if needed: 9router
+
+:: Check if 9router is installed
+where 9router >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    echo Starting 9router...
+    start "" /B 9router --no-browser --skip-update --tray
+    timeout /t 3 /nobreak >nul
+    :: Verify
+    python -c "import urllib.request; r=urllib.request.urlopen('http://localhost:20128/api/health',timeout=5); print('Health:', r.read().decode())" 2>nul
+    if %ERRORLEVEL% equ 0 (
+        echo.
+        echo [OK] 9router restarted with patches active!
+    ) else (
+        echo.
+        echo [WARN] 9router may still be starting. Wait a few seconds.
+    )
+) else (
+    echo [!] 9router not found in PATH. Start it manually.
+)
+
 echo.
 pause
 exit /b 0
