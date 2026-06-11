@@ -71,7 +71,16 @@ PATCHES = [
         "file_glob": "*.js",
         "identify": lambda content: "55221:(a,b,c)" in content and "trying fallback" in content,
         "search": r'p\.warn\("AUTH",`Account \$\{b\.connectionName\} unavailable \(\$\{u\.status\}\), trying fallback`\)',
-        "replace": 'p.warn("AUTH",`Account ${b.connectionName} unavailable (${u.status}), trying fallback`),u.error&&(u.error.includes("isQueued")||u.error.includes("10605"))&&console.log(`\\x1b[33m\\u{1F504} [QODER FALLBACK] ${b.connectionName} queued (${((u.error.match(/queueCount["\\\\s:]+(\\\\d+)/)||[])[1]||"?")} in queue) \\u2192 trying next account\\x1b[0m`)',
+        "replace": r'p.warn("AUTH",`Account ${b.connectionName} unavailable (${u.status}), trying fallback`),u.error&&(u.error.includes("isQueued")||u.error.includes("10605"))&&console.log(`\x1b[33m\u{1F504} [QODER FALLBACK] ${b.connectionName} queued (${((u.error.match(/queueCount["\\s:]+(\\d+)/)||[])[1]||"?")} in queue) \u2192 trying next account\x1b[0m`)',
+        "backup_suffix": ".bak",
+    },
+    {
+        "name": "allRateLimited path cleanup",
+        "description": "Clean Qoder error when all accounts are already locked from previous requests",
+        "file_glob": "*.js",
+        "identify": lambda content: "55221:(a,b,c)" in content and "allRateLimited" in content,
+        "search": r'let a=w\|\|b\.lastError\|\|"Unavailable",c=x\|\|Number\(b\.lastErrorCode\)',
+        "replace": 'let a=w||b.lastError||"Unavailable";if(typeof a==="string"&&(a.includes("isQueued")||a.includes("10605")))a="Qoder queue full, all accounts busy - retry shortly",c=x||Number(b.lastErrorCode)',
         "backup_suffix": ".bak",
     },
 ]
@@ -134,6 +143,8 @@ def check_patches(chunks_dir):
                 elif 'u.error.includes("isQueued")' in content and patch["name"].startswith("proxy"):
                     applied = True
                 elif 'QODER FALLBACK' in content and patch["name"].startswith("Qoder"):
+                    applied = True
+                elif 'all accounts busy' in content and patch["name"].startswith("allRateLimited"):
                     applied = True
                 break
 
