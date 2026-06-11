@@ -65,6 +65,15 @@ PATCHES = [
         "replace": 'v.add(b.connectionId),w=u.error&&(u.error.includes("isQueued")||u.error.includes("10605"))?"Qoder queue full ("+((u.error.match(/queueCount["\\\\s:]+(\\\\d+)/)||[])[1]||"?")+" waiting), retrying next account":u.error,x=u.status;continue',
         "backup_suffix": ".bak",
     },
+    {
+        "name": "Qoder fallback console log",
+        "description": "Add visible console log when Qoder queue fallback happens",
+        "file_glob": "*.js",
+        "identify": lambda content: "55221:(a,b,c)" in content and "trying fallback" in content,
+        "search": r'p\.warn\("AUTH",`Account \$\{b\.connectionName\} unavailable \(\$\{u\.status\}\), trying fallback`\)',
+        "replace": 'p.warn("AUTH",`Account ${b.connectionName} unavailable (${u.status}), trying fallback`),u.error&&(u.error.includes("isQueued")||u.error.includes("10605"))&&console.log(`\\x1b[33m\\u{1F504} [QODER FALLBACK] ${b.connectionName} queued (${((u.error.match(/queueCount["\\\\s:]+(\\\\d+)/)||[])[1]||"?")} in queue) \\u2192 trying next account\\x1b[0m`)',
+        "backup_suffix": ".bak",
+    },
 ]
 
 
@@ -123,6 +132,8 @@ def check_patches(chunks_dir):
                 elif 'q.includes("isQueued")' in content and patch["name"].startswith("vk"):
                     applied = True
                 elif 'u.error.includes("isQueued")' in content and patch["name"].startswith("proxy"):
+                    applied = True
+                elif 'QODER FALLBACK' in content and patch["name"].startswith("Qoder"):
                     applied = True
                 break
 
