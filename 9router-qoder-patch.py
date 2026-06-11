@@ -83,6 +83,15 @@ PATCHES = [
         "replace": 'let a=w||b.lastError||"Unavailable";if(typeof a==="string"&&(a.includes("isQueued")||a.includes("10605")))a="Qoder queue full, all accounts busy - retry shortly",c=x||Number(b.lastErrorCode)',
         "backup_suffix": ".bak",
     },
+    {
+        "name": "combo handler cleanup",
+        "description": "Clean Qoder error in combo model handler when all models fail",
+        "file_glob": "*.js",
+        "identify": lambda content: "48146:(a,b,c)" in content and "All combo models unavailable" in content,
+        "search": r'let p=m&&m\.toLowerCase\(\)\.includes\("no credentials"\)\?503:o\|\|503,q=m\|\|"All combo models unavailable"',
+        "replace": 'let p=m&&m.toLowerCase().includes("no credentials")?503:o||503,q=m||"All combo models unavailable";if(typeof q==="string"&&(q.includes("isQueued")||q.includes("10605")))q="Qoder queue full, all models busy - retry shortly"',
+        "backup_suffix": ".bak",
+    },
 ]
 
 
@@ -145,6 +154,8 @@ def check_patches(chunks_dir):
                 elif 'QODER FALLBACK' in content and patch["name"].startswith("Qoder"):
                     applied = True
                 elif 'all accounts busy' in content and patch["name"].startswith("allRateLimited"):
+                    applied = True
+                elif 'all models busy' in content and patch["name"].startswith("combo"):
                     applied = True
                 break
 
